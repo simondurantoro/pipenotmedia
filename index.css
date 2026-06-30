@@ -1,0 +1,59 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #0E1410;
+  --color-panel: #161F1A;
+  --color-panel-raised: #1E2A23;
+  --color-line: #2A382F;
+  --color-lime: #CCFF66;
+  --color-lime-dim: #9CD64A;
+  --color-paper: #F4F7F2;
+  --color-muted: #8FA396;
+  --color-danger: #FF6B5E;
+  --color-amber: #FFC857;
+  --font-display: "Barlow Condensed", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  background: var(--color-ink);
+  color: var(--color-paper);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+.font-mono-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+::selection {
+  background: var(--color-lime);
+  color: var(--color-ink);
+}
+
+input, select, textarea {
+  background: var(--color-ink);
+  border: 1px solid var(--color-line);
+  color: var(--color-paper);
+}
+input:focus, select:focus, textarea:focus {
+  outline: 2px solid var(--color-lime);
+  outline-offset: 1px;
+  border-color: var(--color-lime);
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--color-ink); }
+::-webkit-scrollbar-thumb { background: var(--color-line); border-radius: 6px; }
