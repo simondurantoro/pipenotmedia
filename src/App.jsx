@@ -3,6 +3,7 @@ import { supabase } from './lib/supabaseClient'
 import Login from './components/Login'
 import DealForm from './components/DealForm'
 import DealsList from './components/DealsList'
+import Facturacion from './components/Facturacion'
 import Dashboard from './components/Dashboard'
 
 export default function App() {
@@ -26,6 +27,7 @@ export default function App() {
     ['dashboard', 'Dashboard'],
     ['nueva', 'Cargar venta'],
     ['ventas', 'Ventas'],
+    ['facturacion', 'Facturación'],
   ]
 
   return (
@@ -59,6 +61,7 @@ export default function App() {
           />
         )}
         {tab === 'ventas' && <DealsList refreshKey={refreshKey} />}
+        {tab === 'facturacion' && <Facturacion />}
       </main>
     </div>
   )

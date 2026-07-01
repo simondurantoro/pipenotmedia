@@ -3,6 +3,16 @@ import { supabase } from '../lib/supabaseClient'
 import Autocomplete from './Autocomplete'
 import { MESES, clp } from '../lib/format'
 
+// Retención de boleta de honorarios en Chile (2026): 15,25%.
+// Si el influencer emite boleta, el costo real para la empresa es el
+// monto neto negociado + esa retención (la empresa paga el bruto).
+const RETENCION_BOLETA = 0.1525
+const computeInfluencerCost = (row) => {
+  const neto = Number(row.negotiated_net_amount) || 0
+  return row.doc_type === 'boleta' ? Math.round(neto * (1 + RETENCION_BOLETA)) : neto
+}
+
+
 const BREAKDOWN_TYPES = [
   { value: 'ninguno', label: 'Sin desglose' },
   { value: 'influenciadores', label: 'Influenciadores' },
@@ -11,10 +21,13 @@ const BREAKDOWN_TYPES = [
   { value: 'plataformas', label: 'Plataformas' },
 ]
 
-const emptyInfluencer = () => ({ influencer_name: '', negotiated_net_amount: '', doc_type: 'factura', company_cost: '' })
+const emptyInfluencer = () => ({ influencer_name: '', negotiated_net_amount: '', doc_type: 'factura', company_cost: 0 })
 const emptyMedia = () => ({ platform: '', amount: '' })
 const emptyContent = () => ({ program: '', cost: '' })
 const emptyPlatform = () => ({ platform: '', cost: '' })
+
+const withComputedCost = (rows) => rows.map((r) => ({ ...r, company_cost: computeInfluencerCost(r) }))
+
 
 export default function DealForm({ userId, onSaved }) {
   const [units, setUnits] = useState([])
@@ -31,7 +44,9 @@ export default function DealForm({ userId, onSaved }) {
   const [invoiceNumber, setInvoiceNumber] = useState('')
 
   const [breakdownType, setBreakdownType] = useState('ninguno')
-  const [influencers, setInfluencers] = useState([emptyInfluencer()])
+  const [influencers, setInfluencersRaw] = useState([emptyInfluencer()])
+  const setInfluencers = (rows) => setInfluencersRaw(withComputedCost(rows))
+
   const [mediaRows, setMediaRows] = useState([emptyMedia()])
   const [contentRows, setContentRows] = useState([emptyContent()])
   const [platformRows, setPlatformRows] = useState([emptyPlatform()])
@@ -192,28 +207,6 @@ export default function DealForm({ userId, onSaved }) {
       </div>
 
       <div className="bg-[var(--color-panel)] border border-[var(--color-line)] rounded-xl p-5">
-        <h2 className="font-display text-2xl font-bold mb-4">Facturación</h2>
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <label className={labelCls}>Estado</label>
-            <select className={inputCls} value={billingStatus} onChange={(e) => setBillingStatus(e.target.value)}>
-              <option value="por_facturar">Por facturar</option>
-              <option value="facturado">Facturado</option>
-              <option value="pagado">Pagado</option>
-            </select>
-          </div>
-          <div>
-            <label className={labelCls}>Fecha de factura</label>
-            <input type="date" className={inputCls} value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
-          </div>
-          <div>
-            <label className={labelCls}>Número de factura</label>
-            <input className={inputCls} value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} />
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-[var(--color-panel)] border border-[var(--color-line)] rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-display text-2xl font-bold">Desglose de costos</h2>
           <select className={inputCls + ' w-56'} value={breakdownType} onChange={(e) => setBreakdownType(e.target.value)}>
@@ -222,17 +215,22 @@ export default function DealForm({ userId, onSaved }) {
         </div>
 
         {breakdownType === 'influenciadores' && (
-          <RowsEditor
-            rows={influencers}
-            setRows={setInfluencers}
-            empty={emptyInfluencer}
-            fields={[
-              { key: 'influencer_name', label: 'Influencer', type: 'text' },
-              { key: 'negotiated_net_amount', label: 'Monto negociado neto', type: 'number' },
-              { key: 'doc_type', label: 'Documento', type: 'select', options: [['factura', 'Factura'], ['boleta', 'Boleta']] },
-              { key: 'company_cost', label: 'Costo empresa', type: 'number' },
-            ]}
-          />
+          <>
+            <RowsEditor
+              rows={influencers}
+              setRows={setInfluencers}
+              empty={emptyInfluencer}
+              fields={[
+                { key: 'influencer_name', label: 'Influencer', type: 'text' },
+                { key: 'negotiated_net_amount', label: 'Monto negociado neto', type: 'number' },
+                { key: 'doc_type', label: 'Documento', type: 'select', options: [['factura', 'Factura'], ['boleta', 'Boleta']] },
+                { key: 'company_cost', label: 'Costo empresa (auto)', type: 'readonly' },
+              ]}
+            />
+            <p className="text-xs text-[var(--color-muted)] mt-2">
+              Factura: costo empresa = monto neto. Boleta: costo empresa = monto neto + 15,25% de retención (se calcula solo).
+            </p>
+          </>
         )}
         {breakdownType === 'agencia_medios' && (
           <RowsEditor
@@ -276,6 +274,28 @@ export default function DealForm({ userId, onSaved }) {
         )}
       </div>
 
+      <div className="bg-[var(--color-panel)] border border-[var(--color-line)] rounded-xl p-5">
+        <h2 className="font-display text-2xl font-bold mb-4">Facturación</h2>
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label className={labelCls}>Estado</label>
+            <select className={inputCls} value={billingStatus} onChange={(e) => setBillingStatus(e.target.value)}>
+              <option value="por_facturar">Por facturar</option>
+              <option value="facturado">Facturado</option>
+              <option value="pagado">Pagado</option>
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>Fecha de factura</label>
+            <input type="date" className={inputCls} value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
+          </div>
+          <div>
+            <label className={labelCls}>Número de factura</label>
+            <input className={inputCls} value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} />
+          </div>
+        </div>
+      </div>
+
       {message && (
         <p className={message.type === 'error' ? 'text-[var(--color-danger)]' : 'text-[var(--color-lime)]'}>{message.text}</p>
       )}
@@ -308,6 +328,10 @@ function RowsEditor({ rows, setRows, empty, fields }) {
                 <select className="w-full rounded-md px-2 py-1.5 text-sm" value={row[f.key]} onChange={(e) => update(i, f.key, e.target.value)}>
                   {f.options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select>
+              ) : f.type === 'readonly' ? (
+                <div className="w-full rounded-md px-2 py-1.5 text-sm font-mono-num bg-[var(--color-panel-raised)] text-[var(--color-lime)]">
+                  {clp(row[f.key])}
+                </div>
               ) : (
                 <input
                   type={f.type}
